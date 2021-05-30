@@ -4,7 +4,7 @@ services:
     image: "redis:alpine"
     ports:
       - "6379:6379"
-  external:
+  proxy:
     image: mbao01/raft-node:latest
     ports:
       - "8888:8080"
@@ -15,36 +15,9 @@ services:
         condition: service_started
     environment:
       - API=EXTERNAL
-  node1:
+  node:
     image: mbao01/raft-node:latest
-    volumes:
-      - .:/raft
-    depends_on:
-      redis:
-        condition: service_started
-  node2:
-    image: mbao01/raft-node:latest
-    volumes:
-      - .:/raft
-    depends_on:
-      redis:
-        condition: service_started
-  node3:
-    image: mbao01/raft-node:latest
-    volumes:
-      - .:/raft
-    depends_on:
-      redis:
-        condition: service_started
-  node4:
-    image: mbao01/raft-node:latest
-    volumes:
-      - .:/raft
-    depends_on:
-      redis:
-        condition: service_started
-  node5:
-    image: mbao01/raft-node:latest
+    scale: 5
     volumes:
       - .:/raft
     depends_on:

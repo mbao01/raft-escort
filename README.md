@@ -15,7 +15,7 @@ Each node can be in 3 different states at a time:
 does not receive a heartbeat from the Leader after a timeout (the heartbeat timeout)
 - Leader: a Candidate becomes a Leader by winning an election by majority vote.
 
-Nodes communicate via HTTP protocol via a bridge network
+Nodes communicate via HTTP protocol via a bridge network (named **raft-network**)
 
 #### Escort Simulator
 The Leader leads the other Follower nodes by sending a message at every heartbeat to the nodes. 
@@ -38,14 +38,14 @@ _**Node** docker image available on docker hub [Raft Node Image](https://hub.doc
 
 
 ### Setup
-Currently, the number of starting Nodes (5) in this test setup is hard coded in the docker-compose.yml file.
+Currently, the number of starting Nodes (5) in this test setup as specified in `scale` in the docker-compose.yml file.
 The proxy server (http://localhost:8888) and redis database are also defined in it. To simply start with the defaults, run the following command
 in the root of this project:
 
 1. Start up
 ```shell
-# start up nodes, proxy and redis db
-$ docker compose up -d
+# start up 5 nodes, proxy and redis db
+$ docker compose up -d --scale node=5
 # NOTE: the data in redis db is not persisted. 
 # If you want this, modify docker-compose.yml file accordingly 
 ```
@@ -92,8 +92,8 @@ PROXY_ADDR = http://localhost:8888
    You can add new nodes to the raft. Ensure that the redis database is up.
    Here\'s the command to do that:
 ```shell
-$ docker run -d --name=<NodeX> --network=raft-network mbao01/raft-node
-# NodeX - container name for node
+$ docker compose run -d --name=<NodeX> node
+# NodeX - container name for node e.g raft-escort_node_6
 ```
 
 2. Remove a node from raft <br>
@@ -102,6 +102,29 @@ $ docker run -d --name=<NodeX> --network=raft-network mbao01/raft-node
 
 ```shell
 $ docker stop <ContainerID OR NodeName>
+```
+
+3. Restart a stopped node <br>
+   You can restart a stopped node to simulate downtime on the node. The raft network is self healing and the returned node
+   will be onboarded back swiftly. Here\'s the command to do that:
+
+```shell
+$ docker start <ContainerID OR NodeName>
+```
+
+### Development Only
+You need a `.env` file at the root of the project which is not committed in this repo.
+```shell
+# internal port of containers (same as server port)
+CONTAINER_PORT=8080
+
+# heartbeat (in seconds) i.e interval for Leader to send heartbeat to follower
+HEARTBEAT_TIMEOUT=60
+
+# timeout (in seconds) after which a follower becomes a Candidate in case heartbeat is not received from Leader.
+# this value should generally be larger than HEARTBEAT_TIMEOUT.
+# If you have an idea of what an ideal ratio between this and HEARTBEAT_TIMEOUT should be, let's talk!
+ELECTION_TIMEOUT=180
 ```
 
 ### Future work
