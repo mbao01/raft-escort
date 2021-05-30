@@ -1,23 +1,27 @@
 import asyncio
 from collections import defaultdict
+
 from .base import BaseState
+from ..cache.cache import get_neighbors
 from ..messages.base import BaseMessage
-from ..messages.response import ResponseMessage
 from ..messages.append_entries import AppendEntriesMessage
 
 
 class Leader(BaseState):
 
     def __init__(self):
+        BaseState.__init__(self)
         self._nextIndexes = defaultdict(int)
         self._matchIndex = defaultdict(int)
 
     def set_sever(self, server):
         self._sever = server
-        self.__send_heartbeat()
+        self._send_heartbeat()
 
         # send message at every heartbeat
-        self._next_timeout(self.__send_heartbeat, BaseState.HEARTBEAT_TIMEOUT)
+        self._next_timeout(self._send_heartbeat, BaseState.HEARTBEAT_TIMEOUT)
+
+        self._server._neighbors = get_neighbors(name={'_name': self._sever._name})
 
         for n in self._server._neighbors:
             self._nextIndexes[n._name] = self._server._lastLogIndex + 1
@@ -43,11 +47,10 @@ class Leader(BaseState):
                 })
 
             data = asyncio.run(self._server.send_message(message, neighbors=[{'_name': message.sender}]))
-            print('Ping from candidate', data)
+            self._handle_node_response(data)
 
     def _handle_node_response(self, messages):
         """This is called when the Leader node receives a response from a Follower"""
-        print('hmmmm: ', messages)
         for message in messages:
             if message:
                 if not message['data']['response']:
@@ -78,12 +81,11 @@ class Leader(BaseState):
                     self._nextIndexes[message['sender']] += 1
 
                     # Are they caught up?
-                    if(self._nextIndexes[message['sender']] > self._server._lastLogIndex):
+                    if self._nextIndexes[message['sender']] > self._server._lastLogIndex:
                         self._nextIndexes[message['sender']] = self._server._lastLogIndex
 
-        return self, None
-
-    def __send_heartbeat(self):
+    def _send_heartbeat(self):
+        print('sending heart beat now')
         self._leader_position = [self._leader_position[0] + 1, 0]
         self._server._commitIndex = self._server._commitIndex + 1
         message = AppendEntriesMessage(
@@ -101,4 +103,5 @@ class Leader(BaseState):
             })
 
         data = asyncio.run(self._server.send_message(message))
+        print('receive heartbeat response')
         self._handle_node_response(data)

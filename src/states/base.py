@@ -1,10 +1,9 @@
 import time
 import random
 from threading import Timer
-
 from decouple import config
-from abc import abstractmethod, ABC
 
+from abc import abstractmethod, ABC
 from ..messages.response import ResponseMessage
 
 
@@ -31,7 +30,6 @@ class BaseState(ABC):
         self._timeoutTime = self._currentTime + random.randrange(timeout, 2 * timeout)
         timer = Timer(self._timeoutTime - self._currentTime, callback)
         timer.start()
-
         self._timer = timer
 
     @abstractmethod

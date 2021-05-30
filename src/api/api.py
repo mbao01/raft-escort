@@ -11,8 +11,6 @@ api.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 port = config("CONTAINER_PORT")
 server_type = config("API", default='INTERNAL')
 
-print('api_type', server_type)
-
 if server_type == 'EXTERNAL':
     external_routes(api=api)
 else:

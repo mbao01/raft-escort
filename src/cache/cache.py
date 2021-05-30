@@ -26,21 +26,15 @@ def save_leader(leader):
     leaders = cache.get('leader')
     leaders = json.loads(leaders) if leaders else {}
     current_term_leader = leaders.get(f"{leader['term']}", None)
-    status = False
 
     if current_term_leader:
         if leader['timestamp'] > current_term_leader['timestamp'] and leader['no_of_votes'] and \
                 leader['no_of_votes'] >= current_term_leader['no_of_votes']:
             leaders[f"{leader['term']}"] = leader
-            status = True
     else:
         leaders[f"{leader['term']}"] = leader
-        status = True
 
-    if status:
-        cache.set('leader', json.dumps(leaders))
-
-    return status
+    cache.set('leader', json.dumps(leaders))
 
 
 def save_election(ballots, candidate, term):

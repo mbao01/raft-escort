@@ -1,8 +1,8 @@
 import asyncio
 import time
 
-from .base import BaseState
 from .voter import Voter
+from .base import BaseState
 from ..messages.base import BaseMessage
 from ..messages.vote import RequestVoteMessage
 from src.cache.cache import save_leader, save_election
@@ -12,7 +12,6 @@ class Candidate(Voter):
 
     def set_server(self, server):
         self._server = server
-        self._votes = {}
         self._start_election()
 
     def on_receive_message(self, message):
@@ -30,8 +29,8 @@ class Candidate(Voter):
             return self._response_message(message, success=False)
 
         if _type == BaseMessage.AppendEntries:
-            self._server.change_state(BaseState.Follower)
-            self._server.state.on_receive_message(message)
+            # ## self._server.change_state(BaseState.Follower)
+            self._server._state.on_receive_message(message)
 
     def _reset_election_timeout(self):
         # candidate wins election if election timeout completely or there's a majority vote
@@ -41,7 +40,8 @@ class Candidate(Voter):
 
     def _declare_election_winner(self):
         # turn back to follower
-        self._server.change_state(BaseState.Follower)
+        # self._server.change_state(BaseState.Follower)
+        pass
 
         # candidate wins election if election timeout completely or there's a majority vote
         # leader = {
@@ -81,11 +81,10 @@ class Candidate(Voter):
         self._collate_election_result(data)
 
     def _collate_election_result(self, ballots):
-        # [{'data': {'response': False}, 'receiver': '172.18.0.4:8080', 'sender': '172.18.0.6:8080', 'term': 9,
-        #   'timestamp': 1622317405, 'type': 2}]
         if ballots and len(ballots) > 0:
             no_of_expected_voters = len(ballots)
-            actual_voters = list(filter(lambda ballot: ballot and self._server._currentTerm == ballot['term'], ballots))
+            actual_voters = list(filter(lambda ballot: ballot and hasattr(ballot, '__getitem__') and
+                                                       self._server._currentTerm == ballot['term'], ballots))
             no_of_voters = len(actual_voters)
             voted_for_me = [voter['sender'] for voter in actual_voters if voter['data']['response']]
             no_of_votes = len(voted_for_me)
@@ -103,12 +102,8 @@ class Candidate(Voter):
                     'no_of_expected_voters': no_of_expected_voters + 1,
                     'leader_by_timeout': False
                 }
-                status = save_leader(leader)
-                if status:
-                    self._server.change_state(BaseState.Leader)
-                    print('Leader found!!!', self._server._name)
-                else:
-                    self._server.change_state(BaseState.Follower)
+                save_leader(leader)
+                self._server.change_state(BaseState.Leader)
             else:
                 self._server.change_state(BaseState.Follower)
             save_election(ballots, self._server._name, self._server._currentTerm)

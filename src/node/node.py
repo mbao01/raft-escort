@@ -63,16 +63,18 @@ class Node(object):
         state, response = self._state.on_message(message)
         self._state = state
 
-    def change_state(self, new_state=BaseState.Follower):
-        if self._state and hasattr(self._state, '_timer'):
+    def change_state(self, state):
+        # clear out any existing timer
+        if self._state and self._state._timer:
             self._state._timer.cancel()
 
-        if new_state == BaseState.Leader:
-            state = Leader()
-        elif new_state == BaseState.Follower:
-            state = Follower()
-        elif new_state == BaseState.Candidate:
-            state = Candidate()
+        _State = Follower
+        if state == BaseState.Leader:
+            _State = Leader
+        elif state == BaseState.Candidate:
+            _State = Candidate
+        elif state == BaseState.Follower:
+            _State = Follower
 
-        self._state = state
-        state.set_server(self)
+        self._state = _State()
+        self._state.set_server(self)

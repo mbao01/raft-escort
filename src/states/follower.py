@@ -1,5 +1,5 @@
-from .base import BaseState
 from .voter import Voter
+from .base import BaseState
 from ..messages.base import BaseMessage
 from ..messages.append_entries import AppendEntriesMessage
 
@@ -19,17 +19,19 @@ class Follower(Voter):
         this state reacts to.
         """
         _type = message.type
-
+        response = None
         if _type == BaseMessage.AppendEntries:
-            return self.handle_append_entries(message)
+            response = self.handle_append_entries(message)
         elif _type == BaseMessage.RequestVote:
-            return self.handle_vote_request(message)
+            response = self.handle_vote_request(message)
+        self._next_timeout(self.on_leader_timeout, BaseState.ELECTION_TIMEOUT * 2)
+        return response
 
     def handle_append_entries(self, message: AppendEntriesMessage):
         """This is called when there is a request to
         append an entry to the log.
         """
-
+        print('Message ', message)
         # cancel time (in other to exclude node processing time)
         self._timer.cancel()
 
@@ -38,7 +40,7 @@ class Follower(Voter):
             data = message.data
 
             # Check if the leader is too far ahead in the log.
-            if (data["leaderCommit"] != self._server._commitIndex):
+            if data["leaderCommit"] != self._server._commitIndex:
                 # If the leader is too far ahead then we
                 #   use the length of the log - 1
                 self._server._commitIndex = min(data["leaderCommit"],
@@ -101,10 +103,7 @@ class Follower(Voter):
                         self._commitIndex = len(log) - 1
                         self._server._log = log
                         return self._response_message(message)
-
             return self._response_message(message)
-
-        self._next_timeout(self.on_leader_timeout, BaseState.ELECTION_TIMEOUT)
 
     def on_leader_timeout(self):
         """This is called when the leader timeout is reached.
