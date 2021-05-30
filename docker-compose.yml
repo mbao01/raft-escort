@@ -1,0 +1,52 @@
+version: "3.9"  # optional since v1.27.0
+services:
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"
+  external:
+    image: mbao01/raft-node:latest
+    ports:
+      - "8888:8080"
+    volumes:
+      - .:/raft
+    depends_on:
+      redis:
+        condition: service_started
+    environment:
+      - API=EXTERNAL
+  node1:
+    image: mbao01/raft-node:latest
+    volumes:
+      - .:/raft
+    depends_on:
+      redis:
+        condition: service_started
+  node2:
+    image: mbao01/raft-node:latest
+    volumes:
+      - .:/raft
+    depends_on:
+      redis:
+        condition: service_started
+  node3:
+    image: mbao01/raft-node:latest
+    volumes:
+      - .:/raft
+    depends_on:
+      redis:
+        condition: service_started
+  node4:
+    image: mbao01/raft-node:latest
+    volumes:
+      - .:/raft
+    depends_on:
+      redis:
+        condition: service_started
+  node5:
+    image: mbao01/raft-node:latest
+    volumes:
+      - .:/raft
+    depends_on:
+      redis:
+        condition: service_started
