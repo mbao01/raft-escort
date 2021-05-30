@@ -50,3 +50,8 @@ services:
     depends_on:
       redis:
         condition: service_started
+
+networks:
+  default:
+    name: raft-network
+    driver: bridge

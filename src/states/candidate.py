@@ -29,8 +29,8 @@ class Candidate(Voter):
             return self._response_message(message, success=False)
 
         if _type == BaseMessage.AppendEntries:
-            # ## self._server.change_state(BaseState.Follower)
-            self._server._state.on_receive_message(message)
+            self._server.change_state(BaseState.Follower)
+            self._server._state.on_receive_message(message)  # forward message as follower
 
     def _reset_election_timeout(self):
         # candidate wins election if election timeout completely or there's a majority vote
@@ -104,8 +104,5 @@ class Candidate(Voter):
                 }
                 save_leader(leader)
                 self._server.change_state(BaseState.Leader)
-            else:
-                self._server.change_state(BaseState.Follower)
+
             save_election(ballots, self._server._name, self._server._currentTerm)
-        else:
-            self._server.change_state(BaseState.Follower)

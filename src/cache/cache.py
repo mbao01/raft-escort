@@ -38,6 +38,7 @@ def save_leader(leader):
 
 
 def save_election(ballots, candidate, term):
+    ballots = [ballot if hasattr(ballot, '__getitem__') else None for ballot in ballots]
     election = cache.get('election')
     election = json.loads(election) if election else {}
     current_term_election = election.get(f'{term}', [])
