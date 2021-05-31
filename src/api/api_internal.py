@@ -32,7 +32,6 @@ def internal_routes(api):
 
     @api.route('/logs', methods=['GET'])
     def logs():
-        print('Logs: ', node._log)
         return jsonify(dict(status='OK', message={
             'logs': node._log,
             'name': node_name,
@@ -43,9 +42,7 @@ def internal_routes(api):
     @api.route('/message', methods=['POST'])
     def message():
         message = json.loads(request.data)  # { term, payload }
-
         message = Map(message)
-
         response = node._state.on_receive_message(message=message)
 
         return jsonify(serialize(response))  # send response back to leader

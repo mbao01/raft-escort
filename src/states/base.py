@@ -18,16 +18,17 @@ class BaseState(ABC):
         self._currentTime = None
         self._timeoutTime = None
         self._timer = None
-        self._leader_position = [0, 0]
 
+    @abstractmethod
     def set_server(self, server):
-        self._server = server
+        """Provision the server having this state
+        """
 
-    def _next_timeout(self, callback, timeout):
+    def _next_timeout(self, callback, timeout, max_timeout=True):
         if self._timer:
             self._timer.cancel()
         self._currentTime = time.time()
-        self._timeoutTime = self._currentTime + random.randrange(timeout, 2 * timeout)
+        self._timeoutTime = self._currentTime + random.randrange(timeout, 2 * timeout if max_timeout else timeout + 1)
         timer = Timer(self._timeoutTime - self._currentTime, callback)
         timer.start()
         self._timer = timer

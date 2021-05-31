@@ -1,4 +1,3 @@
-import asyncio
 import time
 
 from .voter import Voter
@@ -9,6 +8,9 @@ from src.cache.cache import save_leader, save_election
 
 
 class Candidate(Voter):
+
+    def __init__(self):
+        Voter.__init__(self)
 
     def set_server(self, server):
         self._server = server
@@ -29,6 +31,7 @@ class Candidate(Voter):
             return self._response_message(message, success=False)
 
         if _type == BaseMessage.AppendEntries:
+            self._server._currentTerm -= 1
             self._server.change_state(BaseState.Follower)
             self._server._state.on_receive_message(message)  # forward message as follower
 
@@ -77,32 +80,41 @@ class Candidate(Voter):
                 "lastLogTerm": self._server._lastLogTerm,
             })
 
-        data = asyncio.run(self._server.send_message(election, callback=self._reset_election_timeout))
+        data = self._server.send_message(election, callback=self._reset_election_timeout)
         self._collate_election_result(data)
 
     def _collate_election_result(self, ballots):
+
         if ballots and len(ballots) > 0:
-            no_of_expected_voters = len(ballots)
-            actual_voters = list(filter(lambda ballot: ballot and hasattr(ballot, '__getitem__') and
-                                                       self._server._currentTerm == ballot['term'], ballots))
-            no_of_voters = len(actual_voters)
-            voted_for_me = [voter['sender'] for voter in actual_voters if voter['data']['response']]
-            no_of_votes = len(voted_for_me)
-            no_of_opposing_votes = no_of_voters - no_of_votes
+            leader = list(
+                filter(lambda ballot: ballot and hasattr(ballot, '__getitem__') and ballot.get('leaderId', None),
+                       ballots))
+            if len(leader) == 0:
+                no_of_expected_voters = len(ballots)
+                actual_voters = list(filter(lambda ballot: ballot and hasattr(ballot, '__getitem__') and
+                                                           self._server._currentTerm == ballot['term'], ballots))
+                no_of_voters = len(actual_voters)
+                voted_for_me = [voter['sender'] for voter in actual_voters if voter['data']['response']]
+                no_of_votes = len(voted_for_me)
+                no_of_opposing_votes = no_of_voters - no_of_votes
 
-            if no_of_votes * 2 > no_of_voters:  # leader by majority voting -> tied vote not handled
-                leader = {
-                    'term': self._server._currentTerm,
-                    '_name': self._server._name,
-                    'timestamp': time.time(),
-                    'no_of_votes': no_of_votes + 1,
-                    'voted_for_me': voted_for_me,
-                    'no_of_voters': no_of_voters + 1,
-                    'no_of_opposing_votes': no_of_opposing_votes,
-                    'no_of_expected_voters': no_of_expected_voters + 1,
-                    'leader_by_timeout': False
-                }
-                save_leader(leader)
-                self._server.change_state(BaseState.Leader)
+                if no_of_votes * 2 > no_of_voters:  # leader by majority voting -> tied vote not handled
+                    leader = {
+                        'term': self._server._currentTerm,
+                        '_name': self._server._name,
+                        'timestamp': time.time(),
+                        'no_of_votes': no_of_votes + 1,
+                        'voted_for_me': voted_for_me,
+                        'no_of_voters': no_of_voters + 1,
+                        'no_of_opposing_votes': no_of_opposing_votes,
+                        'no_of_expected_voters': no_of_expected_voters + 1,
+                        'leader_by_timeout': False
+                    }
+                    save_leader(leader)
+                    self._server.change_state(BaseState.Leader)
 
-            save_election(ballots, self._server._name, self._server._currentTerm)
+                save_election(ballots, self._server._name, self._server._currentTerm)
+            else:
+                leader = leader[0]
+                self._server._currentTerm = leader['term']
+                self._server.change_state(BaseState.Follower)

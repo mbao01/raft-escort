@@ -2,9 +2,11 @@ import asyncio
 from collections import defaultdict
 
 from .base import BaseState
+from ..api.helper import serialize
 from ..cache.cache import get_neighbors
 from ..messages.base import BaseMessage
 from ..messages.append_entries import AppendEntriesMessage
+from ..messages.response import ResponseMessage
 
 
 class Leader(BaseState):
@@ -14,18 +16,26 @@ class Leader(BaseState):
         self._nextIndexes = defaultdict(int)
         self._matchIndex = defaultdict(int)
 
-    def set_sever(self, server):
-        self._sever = server
+    def set_server(self, server):
+        self._server = server
+
+        # continue from where last leader stopped.
+        if len(self._server._log) > 0:
+            last_log = self._server._log[-1]
+            self._server._position = last_log.currentLeaderPosition
+        else:
+            self._server._position = [0, 0]
+
         self._send_heartbeat()
 
         # send message at every heartbeat
-        self._next_timeout(self._send_heartbeat, BaseState.HEARTBEAT_TIMEOUT)
+        self._next_timeout(self._send_heartbeat, BaseState.HEARTBEAT_TIMEOUT, max_timeout=False)
 
-        self._server._neighbors = get_neighbors(name={'_name': self._sever._name})
+        self._server._neighbors = get_neighbors(name=self._server._name)
 
         for n in self._server._neighbors:
-            self._nextIndexes[n._name] = self._server._lastLogIndex + 1
-            self._matchIndex[n._name] = 0
+            self._nextIndexes[n['_name']] = self._server._lastLogIndex + 1
+            self._matchIndex[n['_name']] = 0
 
     def on_receive_message(self, message):
         # Was the last AppendEntries good?
@@ -34,38 +44,69 @@ class Leader(BaseState):
         if _type == BaseMessage.RequestVote:
             # when a new node joins, the new node may want to request an election. If a leader exists, send a heartbeat
             # to the node
-            message = AppendEntriesMessage(
+            message = ResponseMessage(
                 self._server._name,
                 message.sender,
                 self._server._currentTerm,
                 {
-                    "leaderId": self._server._name,
-                    "prevLogIndex": self._server._lastLogIndex,
-                    "prevLogTerm": self._server._lastLogTerm,
-                    "entries": [],
-                    "leaderCommit": self._server._commitIndex,
-                })
+                    "response": False,
+                    "leaderId": self._server._name
+                }
+            )
+            return serialize(message)
 
-            data = asyncio.run(self._server.send_message(message, neighbors=[{'_name': message.sender}]))
+        elif _type == BaseMessage.ClientMessage:
+            # only when there's a client request to log
+            move = message.data.get('move', [0, 0])
+            new_position = [coord + move[idx] for idx, coord in enumerate(self._server._position)]
+            log = {
+                "leaderId": self._server._name,
+                "prevLogIndex": self._server._lastLogIndex,
+                "prevLogTerm": self._server._lastLogTerm,
+                "entries": [{
+                    'term': self._server._currentTerm,
+                    'previousLeaderPosition': self._server._position,
+                    'currentLeaderPosition': new_position,
+                    'move': message.data['move']  # direction to move in
+                }],
+                "leaderCommit": self._server._commitIndex,
+            }
+            data = self._send_heartbeat(log)
+
+            self._server._log.append(log)
+            self._server._position = new_position
+
             self._handle_node_response(data)
 
-    def _handle_node_response(self, messages):
+            message = ResponseMessage(
+                self._server._name,
+                None,
+                self._server._currentTerm,
+                {
+                    'node': self._server._name,
+                    'is_leader': True,
+                    'log': self._server._log
+                }
+            )
+            return serialize(message)
+
+    def _handle_node_response(self, responses):
         """This is called when the Leader node receives a response from a Follower"""
-        for message in messages:
-            if message:
-                if not message['data']['response']:
+        for idx, data in enumerate(responses):
+            if data:
+                if not data['data']['response']:
                     # No, so lets back up the log for this node
-                    self._nextIndexes[message['sender']] -= 1
+                    self._nextIndexes[data['sender']] -= 1
 
                     # Get the next log entry to send to the client.
-                    previousIndex = max(0, self._nextIndexes[message['sender']] - 1)
+                    previousIndex = max(0, self._nextIndexes[data['sender']] - 1)
                     previous = self._server._log[previousIndex]
-                    current = self._server._log[self._nextIndexes[message['sender']]]
+                    current = self._server._log[self._nextIndexes[data['sender']]]
 
                     # Send the new log to the client and wait for it to respond.
-                    appendEntry = AppendEntriesMessage(
+                    message = AppendEntriesMessage(
                         self._server._name,
-                        message['sender'],
+                        data['sender'],
                         self._server._currentTerm,
                         {
                             "leaderId": self._server._name,
@@ -74,34 +115,28 @@ class Leader(BaseState):
                             "entries": [current],
                             "leaderCommit": self._server._commitIndex,
                         })
-
-                    # self._server(appendEntry)
+                    data = self._server.send_message(message, neighbors=[{'_name': data['sender']}])
+                    responses[idx] = data[0]
+                    print(data)
+                    # self._handle_node_response(data)  # could cause leader to be unavailable
                 else:
                     # The last append was good so increase their index.
-                    self._nextIndexes[message['sender']] += 1
+                    self._nextIndexes[data['sender']] += 1
 
                     # Are they caught up?
-                    if self._nextIndexes[message['sender']] > self._server._lastLogIndex:
-                        self._nextIndexes[message['sender']] = self._server._lastLogIndex
+                    if self._nextIndexes[data['sender']] > self._server._lastLogIndex:
+                        self._nextIndexes[data['sender']] = self._server._lastLogIndex
+        return responses
 
-    def _send_heartbeat(self):
-        print('sending heart beat now')
-        self._leader_position = [self._leader_position[0] + 1, 0]
+    def _send_heartbeat(self, log=None):
         self._server._commitIndex = self._server._commitIndex + 1
+
         message = AppendEntriesMessage(
             self._server._name,
             None,
             self._server._currentTerm,
-            {
-                "leaderId": self._server._name,
-                "prevLogIndex": self._server._lastLogIndex,
-                "prevLogTerm": self._server._lastLogTerm,
-                "entries": [{
-                    'leader_position': self._leader_position
-                }],
-                "leaderCommit": self._server._commitIndex,
-            })
+            log if log else {}
+        )
 
-        data = asyncio.run(self._server.send_message(message))
-        print('receive heartbeat response')
-        self._handle_node_response(data)
+        data = self._server.send_message(message)
+        return data

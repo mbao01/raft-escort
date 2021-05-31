@@ -4,7 +4,9 @@ import requests
 from decouple import config
 from flask import jsonify, redirect, request
 
+from src.api.helper import serialize
 from src.cache.cache import cache
+from src.messages.client_message import ClientMessage
 
 
 def external_routes(api):
@@ -30,6 +32,13 @@ def external_routes(api):
                 {'method': 'GET', 'locator': '/elections?term=<TermNo>', 'description': 'get election for a term'},
                 {'method': 'GET', 'locator': '/leaders', 'description': 'shows all leaders for each term'},
                 {'method': 'GET', 'locator': '/leaders?term=<TermNo>', 'description': 'get leader for a term'},
+                {'method': 'GET', 'locator': '/logs', 'description': 'get logs for all nodes'},
+                {'method': 'GET', 'locator': '/logs?ip=<NodeIP>', 'description': 'get logs for node with IP'},
+                {'method': 'GET', 'locator': '/nodes/move?x=<N>&y=<N>',
+                 'description': 'move leader node and other nodes <N> units. <N> can be +ve or -ve'},
+                {'method': 'GET', 'locator': '/nodes/position',
+                 'description': 'get current positions of all nodes in raft'},
+                {'method': 'GET', 'locator': '/nodes/full', 'description': 'get full details of all nodes in raft'},
             ],
         })), 200
 
@@ -43,7 +52,7 @@ def external_routes(api):
             if node_ip:
                 filtered = list(filter(lambda node: node['_name'] == f'{node_ip.strip()}:{port}', all_nodes))
                 if len(filtered) > 0:
-                    resp = requests.get(f'http://{node_ip}:{port}')
+                    resp = requests.get(f'http://{node_ip}:{port}', timeout=10)
                     data = resp.json()
                     return jsonify(dict(status='OK', data=data['message'],
                                         message=f"Successfully fetched node with IP {node_ip}")), 200
@@ -102,7 +111,7 @@ def external_routes(api):
             if node_ip:
                 filtered = list(filter(lambda node: node['_name'] == f'{node_ip.strip()}:{port}', all_nodes))
                 if len(filtered) > 0:
-                    resp = requests.get(f'http://{node_ip}:{port}/logs')
+                    resp = requests.get(f'http://{node_ip}:{port}/logs', timeout=10)
                     data = resp.json()
                     return jsonify(dict(status='OK', data=data['message'],
                                         message=f"Successfully fetched node logs with IP {node_ip}")), 200
@@ -117,3 +126,74 @@ def external_routes(api):
                 return jsonify(dict(status='OK', data=result, message="Successfully fetched nodes logs")), 200
         else:
             return jsonify(dict(status='404', data=None, message="No node in raft so far")), 404
+
+    @api.route('/nodes/move', methods=['GET'])
+    def move_nodes():
+        x = request.args.get('x', 0)
+        y = request.args.get('y', 0)
+        leaders = cache.get('leader')
+        leaders = json.loads(leaders) if leaders else None
+
+        if leaders:
+            term = max(leaders, key=int)
+            leader = leaders.get(term)
+            node_addr = leader['_name']
+
+            message = ClientMessage(
+                'CLIENT_IP',
+                node_addr,
+                leader['term'],
+                {
+                    "move": [x, y],
+                }
+            )
+
+            resp = requests.post(f'http://{node_addr}/message', json=serialize(message), timeout=60)
+            data = resp.json()
+
+            return jsonify(dict(status='OK', data=data,
+                            message=f"Nodes moved successfully. Controlled by leader {node_addr}")), 200
+        else:
+            return jsonify(dict(status='404', data=None, message="No leader appointed yet in raft")), 404
+
+    @api.route('/nodes/position', methods=['GET'])
+    def nodes_position():
+        all_nodes = cache.get('nodes')
+        all_nodes = json.loads(all_nodes) if all_nodes else None
+        response = []
+
+        if all_nodes:
+            for node in all_nodes:
+                try:
+                    resp = requests.get(f"http://{node['_name']}/status", timeout=60)
+                    data = resp.json()
+                    if data:
+                        message = data.get('message', {}).get('node', {})
+                        response.append({'node': message.get('_name'), 'position': message.get('_position')})
+                except:
+                    print('Unfortunate')
+            return jsonify(dict(status='OK', data=response,
+                            message='Successfully fetched node positions')), 200
+        else:
+            return jsonify(dict(status='404', data=None, message="No node in raft so far")), 404
+
+    @api.route('/nodes/full', methods=['GET'])
+    def nodes_full():
+        all_nodes = cache.get('nodes')
+        all_nodes = json.loads(all_nodes) if all_nodes else None
+        response = []
+
+        if all_nodes:
+            for node in all_nodes:
+                try:
+                    resp = requests.get(f"http://{node['_name']}/status", timeout=60)
+                    data = resp.json()
+                    if data:
+                        response.append(data)
+                except:
+                    print('Unfortunate')
+            return jsonify(dict(status='OK', data=response,
+                            message='Successfully fetched node positions')), 200
+        else:
+            return jsonify(dict(status='404', data=None, message="No node in raft so far")), 404
+

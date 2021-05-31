@@ -10,8 +10,11 @@ class Follower(Voter):
         Voter.__init__(self)
         self._next_timeout(self.on_leader_timeout, BaseState.ELECTION_TIMEOUT)
 
-    def _recalculate_position(self, ):
-        pass
+    def set_server(self, server):
+        self._server = server
+
+        if self._server._position is None:
+            self._position_node()
 
     def on_receive_message(self, message):
         """This method is called when a message is received,
@@ -31,9 +34,9 @@ class Follower(Voter):
         """This is called when there is a request to
         append an entry to the log.
         """
-        print('Message ', message)
         # cancel time (in other to exclude node processing time)
         self._timer.cancel()
+        self._server._currentTerm = message.term
 
         if message.data != {}:
             log = self._server._log
@@ -43,8 +46,7 @@ class Follower(Voter):
             if data["leaderCommit"] != self._server._commitIndex:
                 # If the leader is too far ahead then we
                 #   use the length of the log - 1
-                self._server._commitIndex = min(data["leaderCommit"],
-                                                len(log) - 1)
+                self._server._commitIndex = min(data["leaderCommit"], len(log) - 1)
 
             # Can't possibly be up-to-date with the log
             # If the log is smaller than the preLogIndex
@@ -111,3 +113,6 @@ class Follower(Voter):
         """
         print(f'Leader timed out! \nInitial time {self._currentTime}\nTimeout time {self._timeoutTime}')
         self._server.change_state(BaseState.Candidate)
+
+    def _position_node(self):
+        pass

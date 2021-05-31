@@ -14,4 +14,4 @@ class BaseAPI(object):
 
     def post(self, session, **kwargs):
         data = serialize(self.body)
-        return session.post(self.url, json=data, **kwargs)
+        return session.post(self.url, json=data, timeout=15, **kwargs)

@@ -1,6 +1,7 @@
 import time
 import aiohttp
 import asyncio
+import requests
 
 from src.cache.cache import get_neighbors
 from src.states.base import BaseState
@@ -15,6 +16,8 @@ class Node(object):
     def __init__(self, name: str, log: list = None):
         self._neighbors: list[Node] = get_neighbors(name=name)
         self._name = name
+        self._position = None
+
         self._creationTime = int(time.time())
         self._log = log if log else []
         self._total_nodes = 0
@@ -34,7 +37,21 @@ class Node(object):
     def __str__(self):
         return f'Node:: {self._name}'
 
-    async def send_message(self, message, neighbors=None, callback=None, **kwargs):
+    def send_message(self, message, neighbors=None, callback=None, **kwargs):
+        neighbors = neighbors if neighbors else get_neighbors(name=self._name)
+        responses = []
+        for node in neighbors:
+            try:
+                resp = MessageEndpoint(message, receiver=node['_name']).post(requests, **kwargs)
+                data = resp.json()
+                responses.append(data)
+            except:
+                responses.append(None)
+            if callback:
+                callback()  # reset election timeout
+        return responses
+
+    async def send_message_async(self, message, neighbors=None, callback=None, **kwargs):
         neighbors = neighbors if neighbors else get_neighbors(name=self._name)
         async with aiohttp.ClientSession() as session:
             data = await asyncio.gather(
@@ -68,13 +85,11 @@ class Node(object):
         if self._state and self._state._timer:
             self._state._timer.cancel()
 
-        _State = Follower
         if state == BaseState.Leader:
-            _State = Leader
+            self._state = Leader()
         elif state == BaseState.Candidate:
-            _State = Candidate
+            self._state = Candidate()
         elif state == BaseState.Follower:
-            _State = Follower
+            self._state = Follower()
 
-        self._state = _State()
         self._state.set_server(self)

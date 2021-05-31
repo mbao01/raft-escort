@@ -85,7 +85,19 @@ PROXY_ADDR = http://localhost:8888
       "description": "shows all leaders for each term", 
       "locator": "<PROXY_ADDR>/leaders", 
       "method": "GET"
-    } 
+    }
+
+5.  {
+      "description": "move leader node and other nodes <N> units. <N> can be +ve or -ve",
+      "locator": "<PROXY_ADDR>/nodes/move?x=<N>&y=<N>",
+      "method": "GET", 
+    }
+
+6.  {
+      "description": "get current positions of all nodes in raft",
+      "locator": "<PROXY_ADDR>/nodes/position",
+      "method": "GET"
+    }
 ```
 
 2. Adding new nodes <br>
@@ -119,7 +131,7 @@ You need a `.env` file at the root of the project which is not committed in this
 CONTAINER_PORT=8080
 
 # heartbeat (in seconds) i.e interval for Leader to send heartbeat to follower
-HEARTBEAT_TIMEOUT=60
+HEARTBEAT_TIMEOUT=40
 
 # timeout (in seconds) after which a follower becomes a Candidate in case heartbeat is not received from Leader.
 # this value should generally be larger than HEARTBEAT_TIMEOUT.

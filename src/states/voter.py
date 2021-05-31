@@ -5,7 +5,6 @@ from ..messages.vote import RequestVoteMessage, CastVoteMessage
 
 
 class Voter(BaseState, ABC):
-    _ELECTION_TIMEOUT = 300
 
     def __init__(self):
         BaseState.__init__(self)
