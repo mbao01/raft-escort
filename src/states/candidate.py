@@ -92,12 +92,12 @@ class Candidate(Voter):
                                  ballots))
 
             if len(leader) == 0:
-                no_of_expected_voters = len(ballots)
+                no_of_expected_voters = len(ballots) + 1
                 actual_voters = list(filter(lambda ballot: ballot and hasattr(ballot, '__getitem__') and
                                                            self._server._currentTerm == ballot['term'], ballots))
-                no_of_voters = len(actual_voters)
+                no_of_voters = len(actual_voters) + 1
                 voted_for_me = [voter['sender'] for voter in actual_voters if voter['data']['response']]
-                no_of_votes = len(voted_for_me)
+                no_of_votes = len(voted_for_me) + 1
                 no_of_opposing_votes = no_of_voters - no_of_votes
 
                 if no_of_votes * 2 > no_of_voters:  # leader by majority voting -> tied vote not handled
@@ -105,11 +105,11 @@ class Candidate(Voter):
                         'term': self._server._currentTerm,
                         '_name': self._server._name,
                         'timestamp': time.time(),
-                        'no_of_votes': no_of_votes + 1,
+                        'no_of_votes': no_of_votes,
                         'voted_for_me': voted_for_me,
-                        'no_of_voters': no_of_voters + 1,
+                        'no_of_voters': no_of_voters,
                         'no_of_opposing_votes': no_of_opposing_votes,
-                        'no_of_expected_voters': no_of_expected_voters + 1,
+                        'no_of_expected_voters': no_of_expected_voters,
                         'leader_by_timeout': False
                     }
                     save_leader(leader)

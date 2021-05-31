@@ -129,8 +129,8 @@ def external_routes(api):
 
     @api.route('/nodes/move', methods=['GET'])
     def move_nodes():
-        x = request.args.get('x', 0)
-        y = request.args.get('y', 0)
+        x = int(request.args.get('x', '0'))
+        y = int(request.args.get('y', '0'))
         leaders = cache.get('leader')
         leaders = json.loads(leaders) if leaders else None
 
@@ -150,6 +150,8 @@ def external_routes(api):
 
             resp = requests.post(f'http://{node_addr}/message', json=serialize(message), timeout=60)
             data = resp.json()
+
+            print(data)
 
             return jsonify(dict(status='OK', data=data,
                             message=f"Nodes moved successfully. Controlled by leader {node_addr}")), 200

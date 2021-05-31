@@ -105,6 +105,8 @@ class Leader(BaseState):
                     previous = self._server._log[previousIndex]
                     current = self._server._log[self._nextIndexes[data['sender']]]
 
+                    print('Log: ', self._server._log)
+                    print(previous)
                     # Send the new log to the client and wait for it to respond.
                     message = AppendEntriesMessage(
                         self._server._name,
