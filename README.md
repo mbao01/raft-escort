@@ -40,6 +40,17 @@ _**Node** docker image available on docker hub [Raft Node Image](https://hub.doc
 
 
 ### Setup
+
+*Step 0*: <br>
+If you clone this repo, add a `.env` file to the root of project with following content
+```sh
+CONTAINER_PORT=8080
+
+HEARTBEAT_TIMEOUT=20
+
+ELECTION_TIMEOUT=60
+```
+
 Currently, the number of starting Nodes (5) in this test setup as specified in `scale` in the docker-compose.yml file.
 The proxy server (http://localhost:8888) and redis database are also defined in it. To simply start with the defaults, run the following command
 in the root of this project:
