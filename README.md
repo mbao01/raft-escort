@@ -143,6 +143,7 @@ ELECTION_TIMEOUT=180
 - Decouple inter-node communication/networking layer from Node
 - Create interface for Node to join a decentralized network (# currently a bridge network)
 - Redis Database is only setup to test here. Use any DB you wish and backup data in some storage.
+- Request made to all nodes is blocking. Use asynchronous requests
 
 ### THANK YOU!
 
