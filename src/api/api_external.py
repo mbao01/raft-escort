@@ -151,10 +151,11 @@ def external_routes(api):
             resp = requests.post(f'http://{node_addr}/message', json=serialize(message), timeout=60)
             data = resp.json()
 
-            print(data)
-
-            return jsonify(dict(status='OK', data=data,
-                            message=f"Nodes moved successfully. Controlled by leader {node_addr}")), 200
+            if data and hasattr(data, '__getitem__'):
+                return jsonify(dict(status='OK', data=data,
+                                    message=f"Nodes moved successfully. Controlled by leader {node_addr}")), 200
+            else:
+                return jsonify(dict(status='OK', data=data, message=f"Failed to move leader node: {node_addr}")), 200
         else:
             return jsonify(dict(status='404', data=None, message="No leader appointed yet in raft")), 404
 
