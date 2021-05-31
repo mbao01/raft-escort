@@ -47,9 +47,10 @@ in the root of this project:
 1. Start up
 ```shell
 # start up 5 nodes, proxy and redis db
-$ docker compose up -d --scale node=5
+$ docker-compose up -d --scale node=5
 # NOTE: the data in redis db is not persisted. 
-# If you want this, modify docker-compose.yml file accordingly 
+# If you want this, modify docker-compose.yml file accordingly
+# ANOTHER NOTE: `docker compose up -d --scale node=5` does not regard --scale command
 ```
 
 ```shell

@@ -53,7 +53,7 @@ class Node(object):
                 callback()  # reset election timeout
         return responses
 
-    def _calculate_polarity(self, message):
+    def _calculate_polarity(self):
         name = self._name if self._name else None
         if name:
             ip = name.split(':')[0]
