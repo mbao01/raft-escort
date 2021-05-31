@@ -46,3 +46,4 @@ class BaseState(ABC):
             "currentTerm": self._server._currentTerm,
         })
         return response
+

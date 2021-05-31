@@ -19,6 +19,7 @@ class Node(object):
         # basically tells whether node should be on right side of leader or left side
         self._polarity = self._calculate_polarity()
         self._position = None
+        self._position_history = []
 
         self._creationTime = int(time.time())
         self._log = log if log else []
@@ -103,3 +104,11 @@ class Node(object):
             self._state = Follower()
 
         self._state.set_server(self)
+
+    def update_position(self, move=list):
+        old_position = self._position
+        new_position = [coord + move[idx] for idx, coord in enumerate(old_position if old_position else [0, 0])]
+        self._position = new_position
+        self._position_history.append(self._position)
+
+        return old_position, new_position

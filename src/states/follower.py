@@ -97,14 +97,19 @@ class Follower(Voter):
                     #   commitIndex = len(log)
                     #   Is this a heartbeat?
                     if len(data["entries"]) > 0:
-                        for e in data["entries"]:
-                            log.append(e)
+                        log.append(data)  # append data to log
+
+                        for entry in data["entries"]:
+                            # move follower according to leader
+                            move = entry.get('move', [0, 0])
+                            self._server.update_position(move)
                             self._server._commitIndex += 1
 
                         self._server._lastLogIndex = len(log) - 1
                         self._server._lastLogTerm = log[-1]["term"]
                         self._commitIndex = len(log) - 1
                         self._server._log = log
+
                         return self._response_message(message)
             return self._response_message(message)
 
@@ -118,4 +123,5 @@ class Follower(Voter):
     def _position_node(self):
         polarity = self._server._polarity
         y = random.randint(-50, 50)
-        self._server._position = [random.randint(0,50), y] if polarity == 1 else [random.randint(-50, 0), y]
+        move = [random.randint(0, 50), y] if polarity == 1 else [random.randint(-50, 0), y]
+        self._server.update_position(move)

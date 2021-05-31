@@ -60,23 +60,23 @@ class Leader(BaseState):
         elif _type == BaseMessage.ClientMessage:
             # only when there's a client request to log
             move = message.data.get('move', [0, 0])
-            new_position = [coord + move[idx] for idx, coord in enumerate(self._server._position)]
+            old_position, new_position = self._server.update_position(move)
+
             log = {
                 "leaderId": self._server._name,
                 "prevLogIndex": self._server._lastLogIndex,
                 "prevLogTerm": self._server._lastLogTerm,
                 "entries": [{
                     'term': self._server._currentTerm,
-                    'previousLeaderPosition': self._server._position,
+                    'previousLeaderPosition': old_position,
                     'currentLeaderPosition': new_position,
                     'move': message.data['move']  # direction to move in
                 }],
                 "leaderCommit": self._server._commitIndex,
             }
-            data = self._send_heartbeat(log)
 
+            data = self._send_heartbeat(log)
             self._server._log.append(log)
-            self._server._position = new_position
 
             self._handle_node_response(data)
 

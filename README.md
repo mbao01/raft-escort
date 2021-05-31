@@ -107,8 +107,10 @@ PROXY_ADDR = http://localhost:8888
    You can add new nodes to the raft. Ensure that the redis database is up.
    Here\'s the command to do that:
 ```shell
-$ docker compose run -d --name=<NodeX> node
+$ docker-compose run -d --name=<NodeX> node
 # NodeX - container name for node e.g raft-escort_node_6
+# #Stern Note Please stick with `docker-compose` here as `docker compose` behaves
+# unexpectedly
 ```
 
 2. Remove a node from raft <br>
