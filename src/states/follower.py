@@ -1,3 +1,5 @@
+import random
+
 from .voter import Voter
 from .base import BaseState
 from ..messages.base import BaseMessage
@@ -12,7 +14,6 @@ class Follower(Voter):
 
     def set_server(self, server):
         self._server = server
-
         if self._server._position is None:
             self._position_node()
 
@@ -115,4 +116,6 @@ class Follower(Voter):
         self._server.change_state(BaseState.Candidate)
 
     def _position_node(self):
-        pass
+        polarity = self._server._polarity
+        y = random.randint(-50, 50)
+        self._server._position = [random.randint(0,50), y] if polarity == 1 else [random.randint(-50, 0), y]

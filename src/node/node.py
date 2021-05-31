@@ -16,6 +16,8 @@ class Node(object):
     def __init__(self, name: str, log: list = None):
         self._neighbors: list[Node] = get_neighbors(name=name)
         self._name = name
+        # basically tells whether node should be on right side of leader or left side
+        self._polarity = self._calculate_polarity()
         self._position = None
 
         self._creationTime = int(time.time())
@@ -50,6 +52,14 @@ class Node(object):
             if callback:
                 callback()  # reset election timeout
         return responses
+
+    def _calculate_polarity(self, message):
+        name = self._name if self._name else None
+        if name:
+            ip = name.split(':')[0]
+            last_digit = int(ip[-1])
+            return -1 if last_digit % 2 == 0 else 1
+        return 0
 
     async def send_message_async(self, message, neighbors=None, callback=None, **kwargs):
         neighbors = neighbors if neighbors else get_neighbors(name=self._name)

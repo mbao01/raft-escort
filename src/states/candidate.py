@@ -39,6 +39,7 @@ class Candidate(Voter):
         # candidate wins election if election timeout completely or there's a majority vote
         def callback():
             print(f'Election timeout reset for {self._server._name}')
+
         self._next_timeout(callback, BaseState.ELECTION_TIMEOUT)
 
     def _declare_election_winner(self):
@@ -86,9 +87,10 @@ class Candidate(Voter):
     def _collate_election_result(self, ballots):
 
         if ballots and len(ballots) > 0:
-            leader = list(
-                filter(lambda ballot: ballot and hasattr(ballot, '__getitem__') and ballot.get('leaderId', None),
-                       ballots))
+            leader = list(filter(lambda ballot:
+                                 ballot and hasattr(ballot, '__getitem__') and ballot['data'].get('leaderAlive', None),
+                                 ballots))
+
             if len(leader) == 0:
                 no_of_expected_voters = len(ballots)
                 actual_voters = list(filter(lambda ballot: ballot and hasattr(ballot, '__getitem__') and
@@ -114,7 +116,7 @@ class Candidate(Voter):
                     self._server.change_state(BaseState.Leader)
 
                 save_election(ballots, self._server._name, self._server._currentTerm)
-            else:
-                leader = leader[0]
-                self._server._currentTerm = leader['term']
-                self._server.change_state(BaseState.Follower)
+            elif self._server._currentTerm >= 2:
+                # skip the first and second round of elections because everyone is free to be a candidate
+                self._server._currentTerm -= 1
+                self._reset_election_timeout()

@@ -18,6 +18,8 @@ class Leader(BaseState):
 
     def set_server(self, server):
         self._server = server
+        if self._server._currentTerm == 1 and len(self._server._log) == 0:
+            self._server._position = [0, 0]
 
         # continue from where last leader stopped.
         if len(self._server._log) > 0:
@@ -50,7 +52,7 @@ class Leader(BaseState):
                 self._server._currentTerm,
                 {
                     "response": False,
-                    "leaderId": self._server._name
+                    "leaderAlive": self._server._name
                 }
             )
             return serialize(message)

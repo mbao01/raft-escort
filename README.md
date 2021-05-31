@@ -3,6 +3,8 @@
 By:
 Ayomide Bakare
 
+###### Watch the [demo video](https://google.com) on Youtube and see raft in action
+
 #### Raft Algorithm
 This is an implementation of Raft Algorithm with Escort Simulator. The Leader node starts at point [0, 0] and moves to point [100, 0], one step at a time.
 All other Follower nodes are positioned around the leader node and moves the save unit/direction as the Leader moves. If the Leader is lost, an elected Candidate node becomes the new Leader
