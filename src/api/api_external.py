@@ -155,7 +155,9 @@ def external_routes(api):
                 return jsonify(dict(status='OK', data=data,
                                     message=f"Nodes moved successfully. Controlled by leader {node_addr}")), 200
             else:
-                return jsonify(dict(status='OK', data=data, message=f"Failed to move leader node: {node_addr}")), 200
+                return jsonify(dict(status='OK', data=data,
+                                    message=f"Failed to move leader node: {node_addr}\nCould "
+                                            f"be that the leader is unavailable due to an ongoing election")), 200
         else:
             return jsonify(dict(status='404', data=None, message="No leader appointed yet in raft")), 404
 
