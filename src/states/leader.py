@@ -77,6 +77,7 @@ class Leader(BaseState):
 
             data = self._send_heartbeat(log)
             self._server._log.append(log)
+            self._server._commitIndex = self._server._commitIndex + 1
 
             self._handle_node_response(data)
 
@@ -133,8 +134,6 @@ class Leader(BaseState):
         return responses
 
     def _send_heartbeat(self, log=None):
-        self._server._commitIndex = self._server._commitIndex + 1
-
         message = AppendEntriesMessage(
             self._server._name,
             None,

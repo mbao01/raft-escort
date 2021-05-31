@@ -81,14 +81,14 @@ class Follower(Voter):
                     #   leaderCommit + 1 range then setting the last
                     #   value to the commitValue
                     log = log[:self._server._commitIndex]
-                    for e in data["entries"]:
-                        log.append(e)
-                        self._server._commitIndex += 1
+
+                    log.append(data)
+                    self._server._commitIndex += 1
 
                     response = self._response_message(message)
                     self._server._lastLogIndex = len(log) - 1
                     self._server._lastLogTerm = log[-1]["term"]
-                    self._commitIndex = len(log) - 1
+                    self._server._commitIndex = len(log) - 1
                     self._server._log = log
                     return response
                 else:
@@ -103,11 +103,10 @@ class Follower(Voter):
                             # move follower according to leader
                             move = entry.get('move', [0, 0])
                             self._server.update_position(move)
-                            self._server._commitIndex += 1
 
                         self._server._lastLogIndex = len(log) - 1
                         self._server._lastLogTerm = log[-1]["term"]
-                        self._commitIndex = len(log) - 1
+                        self._server._commitIndex += 1
                         self._server._log = log
 
                         return self._response_message(message)
