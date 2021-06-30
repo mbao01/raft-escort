@@ -5,7 +5,7 @@ from ..messages.vote import RequestVoteMessage, CastVoteMessage
 
 """
 @todo #1:30min Let's move this state decorator out of the states folder.
-It is not a state but a shared capability of follower and candidate states
+ It is not a state but a shared capability of follower and candidate states
 """
 
 
